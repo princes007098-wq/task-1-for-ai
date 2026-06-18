@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neon Snake Adventure</title>
+<style>
+body{margin:0;font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#08111f,#0f172a);color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden}
+body:before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 20%,rgba(0,255,255,.15),transparent 30%),radial-gradient(circle at 80% 80%,rgba(0,255,128,.15),transparent 30%);animation:f 8s infinite alternate}
+@keyframes f{from{transform:scale(1)}to{transform:scale(1.15)}}
+.panel{width:min(95vw,700px);text-align:center;background:rgba(255,255,255,.06);backdrop-filter:blur(10px);padding:20px;border-radius:20px}
+h1{color:#53ffff}
+.levels button,.btn{padding:12px 20px;border:none;border-radius:12px;margin:8px;cursor:pointer;font-weight:bold}
+.easy{background:#22c55e}.medium{background:#facc15}.hard{background:#ef4444;color:#fff}
+#game{display:none}
+.stats{display:flex;justify-content:space-between;margin:10px 0}
+canvas{background:#071018;border:2px solid #42ffff;border-radius:15px;max-width:100%}
+.controls{display:none}
+.controls button{width:70px;height:70px;margin:4px;border:none;border-radius:12px;font-size:24px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;justify-content:center;align-items:center;text-align:center}
+.card{background:#111827;padding:25px;border-radius:18px}
+@media(max-width:768px){.controls{display:block}}
+</style>
+</head>
+<body>
+<div class="panel">
+<div id="menu">
+<h1>🐍 Neon Snake Adventure</h1>
+<p>Select Difficulty</p>
+<div class="levels">
+<button class="easy" onclick="start('easy')">Easy</button>
+<button class="medium" onclick="start('medium')">Medium</button>
+<button class="hard" onclick="start('hard')">Hard</button>
+</div>
+</div>
+
+<div id="game">
+<div class="stats">
+<div>Score: <span id="score">0</span></div>
+<div>High: <span id="high">0</span></div>
+<div id="lvl">Easy</div>
+</div>
+<canvas id="c" width="600" height="600"></canvas>
+<div>
+<button class="btn" onclick="pauseGame()">Pause</button>
+<button class="btn" onclick="backMenu()">New Game</button>
+</div>
+<div class="controls">
+<div><button onclick="dir('UP')">⬆️</button></div>
+<div>
+<button onclick="dir('LEFT')">⬅️</button>
+<button onclick="dir('DOWN')">⬇️</button>
+<button onclick="dir('RIGHT')">➡️</button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="overlay" id="over">
+<div class="card">
+<h2>Game Over</h2>
+<p id="final"></p>
+<button class="btn" onclick="backMenu()">Choose Level Again</button>
+</div>
+</div>
+
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+let snake,food,d='RIGHT',loop,speed=140,score=0,paused=false;
+const box=24;
+let high=+localStorage.getItem('snakeHigh')||0;
+document.getElementById('high').textContent=high;
+
+function start(level){
+document.getElementById('menu').style.display='none';
+document.getElementById('game').style.display='block';
+document.getElementById('lvl').textContent=level.toUpperCase();
+speed=level==='easy'?170:level==='medium'?120:80;
+snake=[{x:240,y:240}];
+foodSpawn(); score=0;
+document.getElementById('score').textContent=0;
+clearInterval(loop);
+loop=setInterval(draw,speed);
+}
+function foodSpawn(){
+food={x:Math.floor(Math.random()*24)*box,y:Math.floor(Math.random()*24)*box};
+}
+function draw(){
+if(paused)return;
+x.clearRect(0,0,c.width,c.height);
+x.fillStyle="#ffcc00";
+x.beginPath();x.arc(food.x+12,food.y+12,10,0,Math.PI*2);x.fill();
+
+for(let i=snake.length-1;i>=0;i--){
+let s=snake[i];
+x.fillStyle=i===0?"#42ffff":"#28d17c";
+x.beginPath();
+x.roundRect(s.x,s.y,box,box,8);
+x.fill();
+}
+let h=snake[0];
+if(d==='LEFT')h={x:h.x-box,y:h.y};
+if(d==='RIGHT')h={x:h.x+box,y:h.y};
+if(d==='UP')h={x:h.x,y:h.y-box};
+if(d==='DOWN')h={x:h.x,y:h.y+box};
+
+if(h.x===food.x&&h.y===food.y){
+score++;
+document.getElementById('score').textContent=score;
+foodSpawn();
+}else snake.pop();
+
+if(h.x<0||h.y<0||h.x>=c.width||h.y>=c.height||snake.some(s=>s.x===h.x&&s.y===h.y)){
+gameOver();return;
+}
+snake.unshift(h);
+
+let head=snake[0];
+x.fillStyle="#fff";
+x.beginPath();x.arc(head.x+8,head.y+8,2,0,6.28);x.arc(head.x+16,head.y+8,2,0,6.28);x.fill();
+x.strokeStyle="red";
+x.beginPath();x.moveTo(head.x+12,head.y+2);x.lineTo(head.x+12,head.y-6);x.stroke();
+}
+function gameOver(){
+clearInterval(loop);
+if(score>high){high=score;localStorage.setItem('snakeHigh',high)}
+document.getElementById('high').textContent=high;
+document.getElementById('final').innerHTML='Score: '+score+'<br>High Score: '+high;
+document.getElementById('over').style.display='flex';
+}
+function backMenu(){
+clearInterval(loop);
+document.getElementById('over').style.display='none';
+document.getElementById('game').style.display='none';
+document.getElementById('menu').style.display='block';
+}
+function pauseGame(){paused=!paused}
+function dir(n){
+if(n==='LEFT'&&d!=='RIGHT')d=n;
+if(n==='RIGHT'&&d!=='LEFT')d=n;
+if(n==='UP'&&d!=='DOWN')d=n;
+if(n==='DOWN'&&d!=='UP')d=n;
+}
+document.addEventListener('keydown',e=>{
+if(e.key==='ArrowLeft')dir('LEFT');
+if(e.key==='ArrowRight')dir('RIGHT');
+if(e.key==='ArrowUp')dir('UP');
+if(e.key==='ArrowDown')dir('DOWN');
+});
+let sx,sy;
+c.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY});
+c.addEventListener('touchend',e=>{
+let dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+if(Math.abs(dx)>Math.abs(dy)) dir(dx>0?'RIGHT':'LEFT');
+else dir(dy>0?'DOWN':'UP');
+});
+</script>
+</body>
+</html>
